@@ -35,7 +35,7 @@ func (om *OrderedMap[K, V]) MarshalJSON() ([]byte, error) { //nolint:funlen
 
 		switch key := any(pair.Key).(type) {
 		case string:
-			writer.String(key)
+			writer.Raw(marshalWithoutEscapeHTML(key)) //nolint:errchkjson
 		case encoding.TextMarshaler:
 			writer.RawByte('"')
 			writer.Raw(key.MarshalText())
@@ -78,7 +78,7 @@ func (om *OrderedMap[K, V]) MarshalJSON() ([]byte, error) { //nolint:funlen
 
 		writer.RawByte(':')
 		// the error is checked at the end of the function
-		writer.Raw(json.Marshal(pair.Value)) //nolint:errchkjson
+		writer.Raw(marshalWithoutEscapeHTML(pair.Value)) //nolint:errchkjson
 	}
 
 	writer.RawByte('}')
@@ -179,4 +179,18 @@ func decodeUTF8(input []byte) (string, error) {
 	}
 
 	return string(runes), nil
+}
+
+func marshalWithoutEscapeHTML(v interface{}) ([]byte, error) {
+	bf := bytes.NewBuffer([]byte{})
+	jsonEncoder := json.NewEncoder(bf)
+	jsonEncoder.SetEscapeHTML(false)
+
+	err := jsonEncoder.Encode(v)
+	if err != nil {
+		return nil, err
+	}
+
+	bytes := bf.Bytes()
+	return bytes[:len(bytes)-1], nil
 }
